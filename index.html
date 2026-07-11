@@ -263,6 +263,31 @@ footer .f-note em{font-family:var(--heading);color:var(--dim)}
 .rv{opacity:0;transform:translateY(28px);transition:opacity .9s ease,transform .9s cubic-bezier(.16,.7,.2,1)}
 .rv.in{opacity:1;transform:none}
 
+/* mobile scale-down: desktop clamps read oversized on small screens */
+@media (max-width:768px){
+  .stx{max-width:88vw}
+  .stx h1{font-size:clamp(30px,10vw,40px)}
+  .stx h2{font-size:clamp(24px,7.4vw,30px)}
+  .stx .tag{font-size:11.5px;letter-spacing:.12em}
+  .stx .lede{font-size:14px;margin-top:14px}
+  .stx blockquote{font-size:19px}
+  .stx .quote-mark{font-size:54px}
+  .stx.step h3{font-size:22px}
+  .stx.step p{font-size:13px}
+  .stx .overline{font-size:9.5px;margin-bottom:12px}
+  .chips .chip{font-size:9.5px;padding:8px 13px;gap:7px}
+  .breather .b-copy h2,#menu .m-head h2{font-size:clamp(26px,7.6vw,34px)}
+  .breather.full-bleed .b-copy h2{font-size:clamp(27px,8.2vw,36px)}
+  .breather .b-copy p,#menu .m-card p{font-size:13.5px}
+  .breather.full-bleed .b-copy{padding:22px 20px}
+  #visit h2{font-size:clamp(30px,9vw,44px)}
+  #visit .v-sub{font-size:14px}
+  .btn{padding:14px 22px;font-size:10px;letter-spacing:.22em}
+  .gate-note{font-size:9.5px}
+  #site-head .wordmark{font-size:12.5px}
+  #site-head .visit-link{padding:8px 13px;font-size:10px}
+}
+
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
   .scroll-hint{display:none}
@@ -720,7 +745,7 @@ class ScrollAct {
   resize() {
     // cap backing store near the frame resolution — pushing 2x-DPR pixels
     // through canvas when the source is 1280px wide is pure waste
-    const frameW = isMobile ? 960 : 1280;
+    const frameW = isMobile ? 540 : 1280;
     const ratio = Math.min(DPR, (frameW * 1.35) / innerWidth);
     this.canvas.width = Math.round(innerWidth * ratio);
     this.canvas.height = Math.round(innerHeight * ratio);
@@ -757,7 +782,12 @@ class ScrollAct {
   tick() {
     if (!this.visible()) return;
     const v = this.remap(this.progress());           // frame-progress 0..1
-    const target = v * (this.count - 1);
+    const targetF = v * (this.count - 1);
+    const vel = targetF - (this.lastTarget ?? targetF);
+    this.lastTarget = targetF;
+    // crossfade only while moving; at rest settle onto a crisp integer frame
+    // (a parked fractional blend reads as a ghosted double-exposure)
+    const target = Math.abs(vel) < 0.02 ? Math.round(targetF) : targetF;
     this.current += (target - this.current) * 0.14;
     if (Math.abs(this.current - target) < 0.004) this.current = target;
     if (Math.abs(this.current - this.lastDrawn) > 0.004) {
