@@ -477,6 +477,43 @@ footer .f-note em{font-family:var(--heading);color:var(--dim)}
     </div>
   </section>
 
+  <!-- ================= ACT IV : THE OVEN ================= -->
+  <section class="act" id="act-pizza" style="height:520vh">
+    <div class="stage">
+      <canvas class="film"></canvas>
+      <div class="ov-left"></div><div class="ov-bottom"></div><div class="tint"></div>
+
+      <div class="stx" data-show="0" data-hide="0.15">
+        <div class="overline">The oven</div>
+        <h2>From the <em>fire</em></h2>
+        <p class="lede">Margherita, blistered and steaming. Scroll for the pull.</p>
+      </div>
+
+      <div class="stx step" data-show="0.24" data-hide="0.40">
+        <div class="num">01 — The char</div>
+        <h3>Leopard-spotted crust</h3>
+        <p>Blistered dark at the edges by a fire that plays favourites, soft where it counts.</p>
+      </div>
+
+      <div class="stx step" data-show="0.50" data-hide="0.66">
+        <div class="num">02 — The lift</div>
+        <h3>One slice,<br>persuaded</h3>
+        <p>Basil still bright, steam still rising, as the first cut comes free of the pie.</p>
+      </div>
+
+      <div class="stx step" data-show="0.72" data-hide="0.85">
+        <div class="num">03 — The pull</div>
+        <h3>Cheese that won't let go</h3>
+        <p>Mozzarella drawn to threads — the slow goodbye every slice deserves.</p>
+      </div>
+
+      <div class="stx" data-show="0.90" data-hide="1.01">
+        <div class="overline">Best shared · straight off the board</div>
+        <h2>Worth the<br><em>stretch</em></h2>
+      </div>
+    </div>
+  </section>
+
   <!-- ================= MENU ================= -->
   <section id="menu">
     <div class="m-head rv">
@@ -516,6 +553,7 @@ footer .f-note em{font-family:var(--heading);color:var(--dim)}
           <div class="divider"></div>
           <ul>
             <li><span>The Backstreet Burger</span><span>chicken &amp; beef</span></li>
+            <li><span>Wood-fired Margherita</span><span>the slow pull</span></li>
             <li><span>Blue Mojito</span><span>electric &amp; icy</span></li>
             <li><span>Chocolate Sundae Float</span><span>unapologetic</span></li>
             <li><span>All-day snacks</span><span>ask the counter</span></li>
@@ -885,6 +923,12 @@ const acts = [
     dwells:[0.05, 0.32, 0.58, 0.79, 0.95],
     heroFrame:65,
     tint: () => `radial-gradient(120% 100% at 50% 55%, rgba(140,90,45,.10), transparent 75%)`
+  }),
+  new ScrollAct({
+    id:'act-pizza', dir:'pizza', count:66,
+    dwells:[0.05, 0.32, 0.58, 0.79, 0.95],
+    heroFrame:65,
+    tint: () => `radial-gradient(120% 100% at 50% 55%, rgba(202,84,32,.10), transparent 75%)`
   })
 ];
 
@@ -990,6 +1034,7 @@ const chapterDefs = [
   {label:'The Space', target:'#space'},
   {label:'The Kitchen', target:'#act-burger'},
   {label:'The Pour', target:'#act-bombon'},
+  {label:'The Oven', target:'#act-pizza'},
   {label:'Visit', target:'#visit'}
 ];
 chapterDefs.forEach((c, i) => {
