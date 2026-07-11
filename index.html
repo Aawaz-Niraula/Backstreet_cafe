@@ -592,6 +592,7 @@ if (!reduced) {
   const pctx = pc.getContext('2d');
   let pw, ph, parts;
   const N = isMobile ? 18 : 40;
+  let pLastW = innerWidth;
   function pInit(){
     pw = pc.width = innerWidth * DPR; ph = pc.height = innerHeight * DPR;
     pc.style.width = innerWidth+'px'; pc.style.height = innerHeight+'px';
@@ -602,7 +603,10 @@ if (!reduced) {
       a: .05 + Math.random()*.3, tw: Math.random()*Math.PI*2
     }));
   }
-  pInit(); addEventListener('resize', pInit);
+  pInit(); addEventListener('resize', () => {
+    if (Math.abs(innerWidth - pLastW) < 2) return; // ignore address-bar wobble
+    pLastW = innerWidth; pInit();
+  });
   (function pLoop(){
     pctx.clearRect(0,0,pw,ph);
     for (const p of parts) {
@@ -635,6 +639,10 @@ document.querySelectorAll('[data-split]').forEach(el => {
 });
 
 /* ============ scroll act engine ============ */
+// Cached viewport: iOS fires resize constantly as the address bar collapses
+// during scroll — rebuilding canvases / shifting math on those is the jitter.
+let VPW = innerWidth, VPH = innerHeight;
+
 class ScrollAct {
   constructor(opts) {
     this.el = document.getElementById(opts.id);
@@ -649,6 +657,12 @@ class ScrollAct {
     this.heroFrame = opts.heroFrame;    // frame index for reduced-motion / poster
     this.texts = [...this.el.querySelectorAll('.stx')];
     this.frames = new Array(this.count).fill(null);
+    // mobile: keep compressed blobs, decode only a sliding window of bitmaps
+    // (decoding every frame up-front is ~500MB — phones evict and stutter)
+    this.windowed = isMobile;
+    this.blobs = this.windowed ? new Array(this.count).fill(null) : null;
+    this.pending = new Set();
+    this.lastEnsure = -99;
     this.loadedCount = 0;
     this.current = 0;
     this.lastDrawn = -1;
@@ -692,16 +706,20 @@ class ScrollAct {
     return this.H[i];
   }
   scrollYFor(v) {
-    return this.el.offsetTop + this.scrollFrac(v) * (this.el.offsetHeight - innerHeight);
+    return this.el.offsetTop + this.scrollFrac(v) * (this.el.offsetHeight - VPH);
   }
   framePath(i) { return `${this.dir}/frame-${String(i+1).padStart(4,'0')}.webp`; }
   loadFrame(i) {
     const done = f => {
-      if (f) this.frames[i] = f;
+      if (f && !this.windowed) this.frames[i] = f;
       this.loadedCount++;
       if (this.onprogress) this.onprogress(this.loadedCount, this.count);
     };
-    // ImageBitmap = fully decoded off-thread, cheapest possible drawImage
+    if (this.windowed) {
+      return fetch(this.framePath(i)).then(r => r.blob())
+        .then(b => { this.blobs[i] = b; done(true); }, () => done(null));
+    }
+    // desktop: ImageBitmap = fully decoded off-thread, cheapest possible drawImage
     if (window.createImageBitmap) {
       return fetch(this.framePath(i))
         .then(r => r.blob()).then(b => createImageBitmap(b))
@@ -715,12 +733,36 @@ class ScrollAct {
       img.src = this.framePath(i);
     });
   }
+  decodeOne(i) {
+    if (i < 0 || i >= this.count || this.frames[i] || this.pending.has(i) || !this.blobs[i]) return Promise.resolve();
+    this.pending.add(i);
+    return createImageBitmap(this.blobs[i])
+      .then(b => { this.frames[i] = b; this.pending.delete(i); }, () => this.pending.delete(i));
+  }
+  ensureWindow(c) {
+    if (!this.windowed) return;
+    this.lastEnsure = c;
+    for (let d = 0; d <= 18; d++) { this.decodeOne(c + d); if (d) this.decodeOne(c - d); }
+    for (let i = 0; i < this.count; i++)
+      if (this.frames[i] && Math.abs(i - c) > 44) {
+        if (this.frames[i].close) this.frames[i].close();
+        this.frames[i] = null;
+      }
+  }
+  sleep() {
+    if (!this.windowed || this.asleep) return;
+    this.asleep = true;
+    this.lastEnsure = -99;
+    for (let i = 0; i < this.count; i++)
+      if (this.frames[i]) { if (this.frames[i].close) this.frames[i].close(); this.frames[i] = null; }
+  }
   async loadCritical() {
     // every 5th frame + hero: enough coverage to scroll immediately
     const critical = [this.heroFrame];
     for (let i = 0; i < this.count; i += 5) critical.push(i);
     this.criticalCount = new Set(critical).size;
     await Promise.all([...new Set(critical)].map(i => this.loadFrame(i)));
+    if (this.windowed) { await this.decodeOne(this.heroFrame); this.ensureWindow(this.heroFrame); }
     this.draw(this.heroFrame);
   }
   async loadRest() {
@@ -746,9 +788,9 @@ class ScrollAct {
     // cap backing store near the frame resolution — pushing 2x-DPR pixels
     // through canvas when the source is 1280px wide is pure waste
     const frameW = isMobile ? 540 : 1280;
-    const ratio = Math.min(DPR, (frameW * 1.35) / innerWidth);
-    this.canvas.width = Math.round(innerWidth * ratio);
-    this.canvas.height = Math.round(innerHeight * ratio);
+    const ratio = Math.min(DPR, (frameW * 1.35) / VPW);
+    this.canvas.width = Math.round(VPW * ratio);
+    this.canvas.height = Math.round(VPH * ratio);
     this.lastDrawn = -1;
   }
   coverDraw(img) {
@@ -773,11 +815,24 @@ class ScrollAct {
   }
   progress() {
     const r = this.el.getBoundingClientRect();
-    return Math.max(0, Math.min(1, -r.top / (r.height - innerHeight)));
+    return Math.max(0, Math.min(1, -r.top / (r.height - VPH)));
   }
-  visible() {
+  visible(margin = 0) {
     const r = this.el.getBoundingClientRect();
-    return r.bottom > 0 && r.top < innerHeight;
+    return r.bottom > -margin && r.top < VPH + margin;
+  }
+  step() {
+    if (!this.visible(VPH * 1.2)) { this.sleep(); return; }
+    this.asleep = false;
+    if (!this.visible(0)) {
+      // approaching: pre-decode the frames this act will enter on
+      if (this.windowed) {
+        const f = Math.round(this.remap(this.progress()) * (this.count - 1));
+        if (Math.abs(f - this.lastEnsure) >= 3) this.ensureWindow(f);
+      }
+      return;
+    }
+    this.tick();
   }
   tick() {
     if (!this.visible()) return;
@@ -790,6 +845,10 @@ class ScrollAct {
     const target = Math.abs(vel) < 0.02 ? Math.round(targetF) : targetF;
     this.current += (target - this.current) * 0.14;
     if (Math.abs(this.current - target) < 0.004) this.current = target;
+    if (this.windowed) {
+      const f = Math.round(this.current);
+      if (Math.abs(f - this.lastEnsure) >= 3) this.ensureWindow(f);
+    }
     if (Math.abs(this.current - this.lastDrawn) > 0.004) {
       this.draw(this.current);
       this.lastDrawn = this.current;
@@ -829,7 +888,12 @@ const acts = [
   })
 ];
 
-addEventListener('resize', () => acts.forEach(a => { a.resize(); a.lastDrawn = -1; }));
+addEventListener('resize', () => {
+  // ignore iOS address-bar height wobble; only true resizes rebuild canvases
+  if (Math.abs(innerWidth - VPW) < 2) return;
+  VPW = innerWidth; VPH = innerHeight;
+  acts.forEach(a => { a.resize(); a.lastDrawn = -1; });
+});
 
 /* ============ loader + boot ============ */
 const loader = document.getElementById('loader');
@@ -894,7 +958,10 @@ async function boot() {
   };
   if (reduced) {
     // static experience: hero frames only, all first-texts shown
-    await Promise.all(acts.map(a => a.loadFrame(a.heroFrame).then(() => a.draw(a.heroFrame))));
+    await Promise.all(acts.map(a =>
+      a.loadFrame(a.heroFrame)
+        .then(() => a.windowed ? a.decodeOne(a.heroFrame) : null)
+        .then(() => a.draw(a.heroFrame))));
     acts.forEach(a => a.texts[0] && a.texts[0].classList.add('visible'));
     document.querySelectorAll('.rv, .breather, #menu').forEach(el => el.classList.add('in'));
     loader.classList.add('done');
@@ -910,7 +977,7 @@ async function boot() {
       for (const a of acts.slice(1)) { a.gentle = true; await a.load(); }
     });
   });
-  (function loop(){ acts.forEach(a => a.tick()); requestAnimationFrame(loop); })();
+  (function loop(){ acts.forEach(a => a.step()); requestAnimationFrame(loop); })();
 }
 boot();
 
