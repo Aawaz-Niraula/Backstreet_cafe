@@ -881,7 +881,11 @@ class ScrollAct {
     // crossfade only while moving; at rest settle onto a crisp integer frame
     // (a parked fractional blend reads as a ghosted double-exposure)
     const target = Math.abs(vel) < 0.02 ? Math.round(targetF) : targetF;
-    this.current += (target - this.current) * 0.14;
+    // touch scroll is already smooth (momentum), so mobile tracks it tightly
+    // and parks almost instantly at rest — desktop wheel input needs the
+    // softer easing or each wheel step reads as a jump
+    const k = isMobile ? (Math.abs(vel) < 0.02 ? 0.5 : 0.3) : 0.14;
+    this.current += (target - this.current) * k;
     if (Math.abs(this.current - target) < 0.004) this.current = target;
     if (this.windowed) {
       const f = Math.round(this.current);
