@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backstreet Cafe — Moon above. Lights below.</title>
+<meta name="description" content="Backstreet Cafe, Baneswor Kathmandu. A cafe of warm windows, quiet corners, layered coffee and honest food.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%230d0b09'/%3E%3Cpath d='M9 13h12v6a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5v-6z' fill='%23c99a4b'/%3E%3Cpath d='M21 14h2a3 3 0 0 1 0 6h-2' fill='none' stroke='%23c99a4b' stroke-width='1.6'/%3E%3Cpath d='M12 10c0-1.4 1.2-1.6 1.2-2.6M16 10c0-1.4 1.2-1.6 1.2-2.6' stroke='%23c99a4b' stroke-width='1.4' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0b09;
+  --ink-soft:#141110;
+  --charcoal:#1a1613;
+  --warm-white:#f4efe7;
+  --dim:#cfc6b8;
+  --dim-2:#ab9f8e;
+  --gold:#c99a4b;
+  --gold-bright:#e0b76a;
+  --gold-glow:rgba(201,154,75,.35);
+  --gold-soft:rgba(201,154,75,.09);
+  --mint:#cfe3d8;
+  --night:#22304d;
+  --ring:rgba(201,154,75,.55);
+  --ease:cubic-bezier(.16,.7,.2,1);
+  --heading:'Playfair Display','Georgia',serif;
+  --body:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:auto}
+body{
+  background:var(--ink);
+  color:var(--warm-white);
+  font-family:var(--body);
+  font-weight:300;
+  overflow-x:hidden;
+  cursor:none;
+}
+@media (hover:none),(pointer:coarse){ body{cursor:auto} }
+::selection{background:var(--gold);color:var(--ink)}
+:where(a,button,[tabindex]):focus-visible{outline:none;box-shadow:0 0 0 3px var(--ring);border-radius:4px}
+
+/* ---------- cursor ---------- */
+#cursor-dot,#cursor-ring{position:fixed;top:0;left:0;pointer-events:none;border-radius:50%;transform:translate(-50%,-50%);z-index:9998}
+#cursor-dot{width:6px;height:6px;background:#fff;mix-blend-mode:difference}
+#cursor-ring{width:36px;height:36px;border:1px solid rgba(244,239,231,.35);z-index:9997;transition:width .25s,height .25s,border-color .25s,box-shadow .25s}
+#cursor-ring.hovering{width:56px;height:56px;border-color:var(--gold);box-shadow:0 0 18px var(--gold-glow)}
+@media (hover:none),(pointer:coarse){#cursor-dot,#cursor-ring{display:none}}
+
+/* ---------- ambient layers ---------- */
+#grain{position:fixed;inset:0;z-index:100;pointer-events:none;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)'/%3E%3C/svg%3E")}
+#vignette{position:fixed;inset:0;z-index:99;pointer-events:none;background:radial-gradient(ellipse at center,transparent 50%,rgba(13,11,9,.45) 100%)}
+#particles{position:fixed;inset:0;z-index:15;pointer-events:none;opacity:.4}
+
+/* ---------- loader ---------- */
+#loader{position:fixed;inset:0;z-index:9999;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;transition:opacity .9s ease,filter .9s ease}
+#loader.done{opacity:0;filter:blur(8px);pointer-events:none}
+#loader .l-line{width:52px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+#loader .l-brand{font-family:var(--heading);font-weight:400;font-size:clamp(20px,3.4vw,30px);letter-spacing:.42em;text-indent:.42em;text-transform:uppercase;color:var(--warm-white)}
+#loader .l-sub{font-size:10.5px;letter-spacing:.35em;text-transform:uppercase;color:var(--dim)}
+#loader .l-bar{width:140px;height:2px;background:rgba(244,239,231,.08);border-radius:2px;overflow:hidden}
+#loader .l-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--gold),var(--gold-bright));transition:width .3s ease}
+#loader .l-pct{font-size:11px;letter-spacing:.3em;color:var(--dim)}
+
+/* ---------- fixed header ---------- */
+#site-head{position:fixed;top:0;left:0;right:0;z-index:60;display:flex;justify-content:space-between;align-items:center;padding:22px clamp(20px,4vw,48px);opacity:0;transform:translateY(-8px);transition:opacity .6s,transform .6s;pointer-events:none}
+#site-head.on{opacity:1;transform:none;pointer-events:auto}
+#site-head .wordmark{font-family:var(--heading);font-size:15px;letter-spacing:.3em;text-transform:uppercase;color:var(--warm-white);text-decoration:none}
+#site-head .visit-link{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);text-decoration:none;border:1px solid rgba(201,154,75,.4);padding:10px 18px;border-radius:2px;transition:background .25s,color .25s}
+#site-head .visit-link:hover{background:var(--gold);color:var(--ink)}
+
+/* ---------- chapter markers ---------- */
+#chapters{position:fixed;right:clamp(14px,2.6vw,34px);top:50%;transform:translateY(-50%);z-index:50;display:flex;flex-direction:column;align-items:center;gap:0}
+#chapters .ch{display:flex;align-items:center;position:relative;padding:9px 0;background:none;border:none;cursor:pointer}
+#chapters .ch .dot{width:7px;height:7px;border-radius:50%;background:rgba(244,239,231,.22);transition:background .3s,box-shadow .3s,transform .3s}
+#chapters .ch.active .dot{background:var(--gold);box-shadow:0 0 12px var(--gold-glow);transform:scale(1.25)}
+#chapters .ch .lbl{position:absolute;right:22px;top:50%;transform:translateY(-50%) translateX(6px);font-size:10.5px;letter-spacing:.28em;text-transform:uppercase;color:#ded5c6;white-space:nowrap;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.8)}
+#chapters .ch:hover .lbl{opacity:1;transform:translateY(-50%) translateX(0)}
+#chapters .ln{width:1px;height:26px;background:rgba(244,239,231,.14)}
+@media (max-width:768px){#chapters{display:none}}
+
+/* ---------- scroll acts ---------- */
+.act{position:relative}
+.act .stage{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden}
+.act canvas.film{position:absolute;inset:0;width:100%;height:100%;display:block}
+.act .ov-left{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(13,11,9,.62) 0%,rgba(13,11,9,.18) 34%,transparent 55%)}
+.act .ov-bottom{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(13,11,9,.35) 0%,transparent 22%,transparent 62%,rgba(13,11,9,.55) 100%)}
+.act .tint{position:absolute;inset:0;z-index:5;pointer-events:none;mix-blend-mode:soft-light}
+
+/* scroll text overlays */
+.stx{position:absolute;z-index:10;left:clamp(22px,6vw,90px);top:50%;transform:translateY(-50%) translateX(-20px);max-width:min(560px,82vw);opacity:0;filter:blur(6px);transition:opacity .7s ease,filter .7s ease,transform .7s ease;pointer-events:none}
+.stx.visible{opacity:1;filter:blur(0);transform:translateY(-50%) translateX(0);pointer-events:auto}
+/* aura: local scrim so text owns its space over bright video */
+.stx::before{content:"";position:absolute;inset:-18% -26%;z-index:-1;border-radius:40%;pointer-events:none;
+  background:radial-gradient(62% 62% at 34% 50%,rgba(9,7,5,.72),rgba(9,7,5,.32) 58%,transparent 76%);
+  filter:blur(22px);opacity:0;transition:opacity .8s ease;transform:translateZ(0)}
+.stx.visible::before{opacity:1}
+.stx.centered::before{inset:-30% -34%;background:radial-gradient(55% 55% at 50% 50%,rgba(9,7,5,.72),rgba(9,7,5,.32) 58%,transparent 78%)}
+.stx.centered{left:50%;text-align:center;transform:translate(-50%,-50%) translateX(0) translateY(12px)}
+.stx.centered.visible{transform:translate(-50%,-50%)}
+.stx .overline{font-size:10.5px;font-weight:500;letter-spacing:.35em;text-transform:uppercase;color:var(--gold-bright);margin-bottom:18px}
+.stx .overline::after{content:"";display:block;width:44px;height:1px;background:linear-gradient(90deg,var(--gold),transparent);margin-top:12px}
+.stx.centered .overline::after{margin-left:auto;margin-right:auto;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.stx h1,.stx h2{font-family:var(--heading);font-weight:300;line-height:1.08;color:var(--warm-white)}
+.stx h1{font-size:clamp(40px,6vw,80px);letter-spacing:.01em}
+.stx h2{font-size:clamp(30px,4.2vw,54px)}
+.stx h1 em,.stx h2 em{font-style:italic;color:var(--gold-bright)}
+.stx .tag{margin-top:20px;font-size:clamp(13px,1.35vw,16px);letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
+.stx .lede{margin-top:18px;font-size:clamp(14px,1.35vw,17px);line-height:1.75;color:var(--dim);font-weight:300;max-width:46ch}
+.stx .quote-mark{font-family:var(--heading);font-size:84px;line-height:.6;color:var(--gold);opacity:.85;display:block;margin-bottom:16px}
+.stx blockquote{font-family:var(--heading);font-style:italic;font-weight:300;font-size:clamp(21px,2.6vw,32px);line-height:1.5;color:var(--warm-white)}
+.stx .attr{margin-top:22px;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--dim)}
+.stx .attr::before{content:"";display:inline-block;width:30px;height:1px;background:var(--gold);vertical-align:middle;margin-right:12px}
+
+/* hero letter split */
+.split span{display:inline-block;opacity:0;transform:translateY(26px) rotate(2deg);transition:opacity .55s ease,transform .55s cubic-bezier(.2,.7,.2,1)}
+.visible .split span{opacity:1;transform:none}
+
+/* amenity chips */
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.chips .chip{display:inline-flex;align-items:center;gap:9px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--warm-white);background:rgba(14,11,9,.45);border:1px solid rgba(244,239,231,.18);border-radius:999px;padding:10px 18px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:border-color .2s,background .2s}
+.chips .chip:hover{border-color:var(--ring);background:rgba(14,11,9,.6)}
+.chips .chip svg{width:14px;height:14px;stroke:var(--gold);flex:none}
+
+/* build/pour step callouts */
+.stx.step .num{font-family:var(--heading);font-style:italic;font-size:15px;color:var(--gold);letter-spacing:.14em;margin-bottom:12px}
+.stx.step h3{font-family:var(--heading);font-weight:300;font-size:clamp(26px,3.4vw,44px);line-height:1.15;color:var(--warm-white)}
+.stx.step p{margin-top:14px;font-size:clamp(13px,1.25vw,16px);line-height:1.7;color:var(--dim);max-width:38ch}
+
+/* hero scroll hint */
+.scroll-hint{position:absolute;left:50%;bottom:34px;transform:translateX(-50%);z-index:11;display:flex;flex-direction:column;align-items:center;gap:10px;opacity:0;transition:opacity .8s ease 1.2s}
+.scroll-hint.on{opacity:.75}
+.scroll-hint.gone{opacity:0;transition:opacity .5s ease}
+.scroll-hint span{font-size:10.5px;letter-spacing:.4em;text-transform:uppercase;color:#e6ddcd;text-shadow:0 1px 10px rgba(0,0,0,.9)}
+.scroll-hint .wheel{width:1px;height:44px;background:rgba(244,239,231,.22);position:relative;overflow:hidden}
+.scroll-hint .wheel::after{content:"";position:absolute;top:-40%;left:0;width:100%;height:40%;background:var(--gold);animation:drip 2.2s ease-in-out infinite}
+@keyframes drip{0%{top:-40%}60%,100%{top:110%}}
+
+/* ---------- breathers ---------- */
+.breather{position:relative;padding:clamp(90px,14vh,160px) clamp(22px,7vw,110px);overflow:hidden;background:
+  radial-gradient(480px circle at var(--mx,70%) var(--my,30%),rgba(224,183,106,.17),transparent 70%),
+  radial-gradient(1250px circle at var(--mx,70%) var(--my,30%),rgba(201,154,75,.20),transparent 64%),
+  linear-gradient(180deg,var(--ink) 0%,#151110 50%,var(--ink) 100%)}
+.breather.mintish{background:
+  radial-gradient(480px circle at var(--mx,30%) var(--my,40%),rgba(190,224,205,.14),transparent 70%),
+  radial-gradient(1250px circle at var(--mx,30%) var(--my,40%),rgba(155,199,178,.17),transparent 64%),
+  linear-gradient(180deg,var(--ink) 0%,#12140f 50%,var(--ink) 100%)}
+.breather .inner{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:clamp(40px,6vw,90px);align-items:center}
+/* full-bleed variant: image covers the viewport, copy floats on a scrim */
+.breather.full-bleed{min-height:100vh;min-height:100svh;display:flex;align-items:center}
+.breather.full-bleed .fb-bg{position:absolute;inset:-6% 0;width:100%;height:112%;object-fit:cover;object-position:center 32%;transform:scale(1.1);will-change:transform}
+/* soft ink fades: the video act dissolves into the image instead of hard-cutting */
+.breather.full-bleed::before{content:"";position:absolute;top:0;left:0;right:0;height:30vh;z-index:1;pointer-events:none;background:linear-gradient(180deg,var(--ink) 0%,rgba(13,11,9,.6) 45%,transparent 100%)}
+.breather.full-bleed::after{content:"";position:absolute;bottom:0;left:0;right:0;height:22vh;z-index:1;pointer-events:none;background:linear-gradient(0deg,var(--ink) 0%,transparent 100%)}
+.breather.full-bleed .fb-scrim{position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,8,6,.94) 0%,rgba(10,8,6,.74) 38%,rgba(10,8,6,.34) 66%,rgba(10,8,6,.16) 100%),linear-gradient(180deg,rgba(10,8,6,.5),transparent 22%,transparent 78%,rgba(10,8,6,.55))}
+.breather.full-bleed .fb-glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(720px circle at var(--mx,30%) var(--my,45%),rgba(224,183,106,.15),transparent 64%)}
+.breather.full-bleed .inner{grid-template-columns:1fr;position:relative;z-index:2;width:100%}
+.breather.full-bleed .b-copy{max-width:640px;background:linear-gradient(135deg,rgba(12,9,7,.46),rgba(12,9,7,.28));border:1px solid rgba(244,239,231,.09);border-left:2px solid var(--gold);border-radius:6px;padding:clamp(26px,3.4vw,44px);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.breather.full-bleed .b-copy h2{font-size:clamp(36px,4.8vw,66px);text-shadow:0 2px 26px rgba(0,0,0,.55)}
+.breather.full-bleed .b-copy p{color:#ece4d6;text-shadow:0 1px 14px rgba(0,0,0,.5)}
+.breather.full-bleed .b-list .row{color:var(--warm-white);border-color:rgba(244,239,231,.16)}
+.breather.full-bleed .b-list .row:first-child{border-top-color:rgba(244,239,231,.16)}
+.breather.full-bleed .b-list .row .muted{color:#cabfab}
+.breather.flip .inner .b-media{order:2}
+.breather .b-media{position:relative;border-radius:4px;overflow:hidden;box-shadow:0 40px 90px rgba(0,0,0,.55)}
+.breather .b-media::after{content:"";position:absolute;inset:0;border:1px solid rgba(244,239,231,.08);border-radius:4px;pointer-events:none}
+.breather .b-media img{display:block;width:100%;height:100%;object-fit:cover;transform:scale(1.06);transition:transform 1.4s cubic-bezier(.16,.7,.2,1)}
+.breather.in .b-media img{transform:scale(1)}
+.breather .b-frame{position:absolute;top:14px;left:14px;right:14px;bottom:14px;border:1px solid rgba(201,154,75,.28);border-radius:2px;pointer-events:none;z-index:2}
+.breather .b-copy .overline{font-size:10.5px;font-weight:500;letter-spacing:.35em;text-transform:uppercase;color:var(--gold-bright);margin-bottom:20px}
+.breather .b-copy .overline::after{content:"";display:block;width:44px;height:1px;background:linear-gradient(90deg,var(--gold),transparent);margin-top:12px}
+.breather .b-copy h2{font-family:var(--heading);font-weight:300;font-size:clamp(30px,3.8vw,52px);line-height:1.15}
+.breather .b-copy h2 em{font-style:italic;color:var(--gold-bright)}
+.breather .b-copy p{margin-top:22px;font-size:clamp(14px,1.3vw,16.5px);line-height:1.8;color:var(--dim);max-width:50ch}
+.breather .b-copy .b-list{margin-top:28px;display:flex;flex-direction:column;gap:0}
+.breather .b-list .row{display:flex;align-items:baseline;gap:14px;padding:13px 0;border-bottom:1px solid rgba(244,239,231,.07);font-size:13px;letter-spacing:.06em;color:var(--warm-white)}
+.breather .b-list .row:first-child{border-top:1px solid rgba(244,239,231,.07)}
+.breather .b-list .row .k{color:var(--gold);font-family:var(--heading);font-style:italic;font-size:14px;flex:none;width:26px}
+.breather .b-list .row .muted{color:var(--dim-2);margin-left:auto;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase}
+.breather .b-copy,.breather .b-media{opacity:0;transform:translateY(34px);transition:opacity .9s ease,transform .9s cubic-bezier(.16,.7,.2,1)}
+.breather.in .b-copy,.breather.in .b-media{opacity:1;transform:none}
+.breather.in .b-media{transition-delay:.12s}
+@media (max-width:880px){.breather .inner{grid-template-columns:1fr}.breather.flip .inner .b-media{order:0}}
+
+/* ---------- menu ---------- */
+#menu{position:relative;padding:clamp(90px,14vh,170px) clamp(22px,7vw,110px);background:
+  radial-gradient(480px circle at var(--mx,50%) var(--my,20%),rgba(224,183,106,.15),transparent 70%),
+  radial-gradient(1250px circle at var(--mx,50%) var(--my,20%),rgba(201,154,75,.17),transparent 62%),
+  linear-gradient(180deg,var(--ink),#161210 55%,var(--ink))}
+#menu .m-head{max-width:1180px;margin:0 auto 56px;display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:20px}
+#menu .m-head .overline{font-size:10.5px;font-weight:500;letter-spacing:.35em;text-transform:uppercase;color:var(--gold-bright);margin-bottom:18px}
+#menu .m-head h2{font-family:var(--heading);font-weight:300;font-size:clamp(32px,4vw,56px)}
+#menu .m-head h2 em{font-style:italic;color:var(--gold-bright)}
+#menu .m-head .note{font-size:11.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+#menu .m-grid{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:repeat(12,1fr);gap:18px}
+#menu .m-card{position:relative;border-radius:4px;overflow:hidden;background:rgba(244,239,231,.03);border:1px solid rgba(244,239,231,.07);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);transition:border-color .3s,background .3s,transform .5s cubic-bezier(.16,.7,.2,1);opacity:0;transform:translateY(30px)}
+#menu.in .m-card{opacity:1;transform:none;transition:border-color .3s,background .3s,transform .8s cubic-bezier(.16,.7,.2,1),opacity .8s ease}
+#menu.in .m-card:nth-child(2){transition-delay:.08s}#menu.in .m-card:nth-child(3){transition-delay:.16s}#menu.in .m-card:nth-child(4){transition-delay:.24s}
+#menu .m-card:hover{background:rgba(244,239,231,.05);border-color:var(--ring);transform:translateY(-4px);box-shadow:0 22px 60px rgba(0,0,0,.5)}
+#menu.in .m-card{transition:border-color .25s,background .25s,transform .4s var(--ease),box-shadow .4s var(--ease),opacity .8s ease}
+#menu .m-card.photo{grid-column:span 7;min-height:380px}
+#menu .m-card.photo .img-wrap{position:absolute;inset:0;overflow:hidden}
+#menu .m-card.photo img{width:100%;height:100%;object-fit:cover;transition:transform .9s cubic-bezier(.16,.7,.2,1)}
+#menu .m-card.photo:hover img{transform:scale(1.04)}
+#menu .m-card.photo .veil{position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,rgba(13,11,9,.85) 100%)}
+#menu .m-card.photo .meta{position:absolute;left:26px;right:26px;bottom:22px}
+#menu .m-card.txt{grid-column:span 5;padding:30px 28px;display:flex;flex-direction:column;justify-content:flex-end;min-height:380px}
+#menu .m-card .kind{font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold-bright);margin-bottom:10px}
+#menu .m-card h3{font-family:var(--heading);font-weight:400;font-size:clamp(22px,2.2vw,30px);color:var(--warm-white)}
+#menu .m-card p{margin-top:10px;font-size:13.5px;line-height:1.7;color:var(--dim);max-width:40ch}
+#menu .m-card .divider{width:100%;height:1px;background:rgba(244,239,231,.08);margin:18px 0}
+#menu .m-card ul{list-style:none;display:flex;flex-direction:column;gap:12px}
+#menu .m-card ul li{display:flex;justify-content:space-between;gap:14px;font-size:13.5px;color:var(--warm-white)}
+#menu .m-card ul li span:last-child{color:var(--dim);font-style:italic;font-family:var(--heading);white-space:nowrap}
+@media (max-width:880px){#menu .m-card.photo,#menu .m-card.txt{grid-column:span 12;min-height:300px}}
+
+/* ---------- CTA / footer ---------- */
+#visit{position:relative;padding:clamp(110px,18vh,200px) clamp(22px,7vw,110px) clamp(90px,12vh,140px);text-align:center;overflow:hidden;background:
+  radial-gradient(1100px circle at 50% 0%,rgba(34,48,77,.35),transparent 60%),
+  radial-gradient(480px circle at var(--mx,50%) var(--my,60%),rgba(224,183,106,.14),transparent 70%),
+  radial-gradient(1250px circle at var(--mx,50%) var(--my,60%),rgba(201,154,75,.16),transparent 62%),
+  var(--ink)}
+#visit .v-moon{position:absolute;top:64px;left:50%;transform:translateX(-50%);width:54px;height:54px;border-radius:50%;background:radial-gradient(circle at 38% 36%,#fdf8ec,#d8cdb4 58%,#9b917d 100%);box-shadow:0 0 44px rgba(244,239,231,.35),0 0 120px rgba(244,239,231,.12);opacity:.9}
+#visit .overline{font-size:10.5px;font-weight:500;letter-spacing:.4em;text-transform:uppercase;color:var(--gold-bright);margin-bottom:26px;margin-top:70px}
+#visit h2{font-family:var(--heading);font-weight:300;font-size:clamp(38px,6vw,84px);line-height:1.12;max-width:900px;margin:0 auto}
+#visit h2 em{font-style:italic;color:var(--gold-bright)}
+#visit .v-sub{margin-top:26px;font-size:clamp(14px,1.4vw,17px);line-height:1.8;color:var(--dim);max-width:52ch;margin-left:auto;margin-right:auto}
+#visit .v-actions{margin-top:44px;display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:10px;font-family:var(--body);font-size:11px;font-weight:500;letter-spacing:.28em;text-transform:uppercase;text-decoration:none;padding:17px 34px;border-radius:2px;transition:background .3s,color .3s,border-color .3s,box-shadow .3s;cursor:pointer}
+.btn.primary{background:var(--gold);color:var(--ink);border:1px solid var(--gold)}
+.btn.primary:hover{background:var(--gold-bright);border-color:var(--gold-bright);box-shadow:0 8px 34px var(--gold-glow)}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:transparent;color:var(--warm-white);border:1px solid rgba(244,239,231,.25)}
+.btn.ghost:hover{border-color:var(--gold);color:var(--gold-bright)}
+#visit .v-card{margin:64px auto 0;max-width:520px;background:rgba(244,239,231,.03);border:1px solid rgba(244,239,231,.08);border-radius:4px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);padding:28px 30px;display:flex;flex-direction:column;gap:14px;text-align:left}
+#visit .v-card .row{display:flex;justify-content:space-between;align-items:baseline;gap:18px;font-size:13px;color:var(--warm-white);letter-spacing:.04em}
+#visit .v-card .row .lab{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--dim-2);flex:none}
+#visit .v-card .row a{color:var(--gold-bright);text-decoration:none}
+#visit .v-card .row a:hover{text-decoration:underline}
+footer{padding:44px clamp(22px,7vw,110px);background:#0a0908;border-top:1px solid rgba(244,239,231,.06);display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px}
+footer .f-brand{font-family:var(--heading);font-size:16px;letter-spacing:.3em;text-transform:uppercase}
+footer .f-note{font-size:11.5px;letter-spacing:.16em;color:var(--dim-2)}
+footer .f-note em{font-family:var(--heading);color:var(--dim)}
+
+/* ---------- tilt + shine (shadcn-vanilla-polish: media that responds) ---------- */
+[data-tilt]{transition:transform .55s var(--ease);transform:perspective(950px)}
+[data-tilt] .shine{position:absolute;inset:0;z-index:3;pointer-events:none;opacity:0;transition:opacity .35s ease;
+  background:radial-gradient(440px circle at var(--sx,50%) var(--sy,50%),rgba(255,236,200,.17),transparent 62%)}
+[data-tilt]:hover .shine{opacity:1}
+
+/* ---------- step-inside gate ---------- */
+.gate-btn{background:none;border:none;font:inherit;color:inherit;cursor:pointer;display:block;text-align:inherit;padding:0}
+.gate-btn h2{transition:text-shadow .4s ease,transform .4s var(--ease)}
+.gate-btn:hover h2{text-shadow:0 0 34px var(--gold-glow);transform:translateY(-2px)}
+.gate-note{margin-top:22px;font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;color:#e2d9c9;opacity:0;transition:opacity .6s ease .5s}
+.gate-live .gate-note{opacity:.9}
+.gate-live .gate-btn h2 em{animation:gatePulse 2.4s ease-in-out infinite}
+@keyframes gatePulse{0%,100%{text-shadow:0 0 0 rgba(224,183,106,0)}50%{text-shadow:0 0 30px rgba(224,183,106,.65)}}
+
+/* reveal helper */
+.rv{opacity:0;transform:translateY(28px);transition:opacity .9s ease,transform .9s cubic-bezier(.16,.7,.2,1)}
+.rv.in{opacity:1;transform:none}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+  .scroll-hint{display:none}
+}
+</style>
+</head>
+<body>
+
+<div id="cursor-dot"></div><div id="cursor-ring"></div>
+<div id="grain"></div><div id="vignette"></div>
+<canvas id="particles"></canvas>
+
+<div id="loader" role="status" aria-label="Loading">
+  <div class="l-line"></div>
+  <div class="l-brand">Backstreet</div>
+  <div class="l-sub">Cafe · Kathmandu</div>
+  <div class="l-line"></div>
+  <div class="l-bar"><div class="l-fill" id="lfill"></div></div>
+  <div class="l-pct" id="lpct">0%</div>
+</div>
+
+<header id="site-head">
+  <a class="wordmark" href="#top" data-hover>Backstreet Cafe</a>
+  <a class="visit-link" href="#visit" data-hover>Visit us</a>
+</header>
+
+<nav id="chapters" aria-label="Chapters"></nav>
+
+<main id="top">
+
+  <!-- ================= ACT I : ARRIVAL ================= -->
+  <section class="act" id="act-arrival" style="height:720vh">
+    <div class="stage">
+      <canvas class="film"></canvas>
+      <div class="ov-left"></div><div class="ov-bottom"></div><div class="tint"></div>
+
+      <div class="stx" data-show="0" data-hide="0.14">
+        <div class="overline">Baneswor · Kathmandu</div>
+        <h1 class="split" data-split>Backstreet</h1>
+        <h1 class="split" data-split style="margin-top:2px"><em data-split-em>Cafe</em></h1>
+        <div class="tag">Moon above. Lights below.</div>
+      </div>
+
+      <div class="stx" data-show="0.21" data-hide="0.34">
+        <span class="quote-mark">&ldquo;</span>
+        <blockquote>And somewhere in between —<br>Backstreet glows.</blockquote>
+        <div class="attr">Where warm windows hold soft conversations</div>
+      </div>
+
+      <div class="stx centered" id="gate-text" data-show="0.36" data-hide="0.455">
+        <div class="overline">You've arrived</div>
+        <button class="gate-btn" id="gate-btn" data-hover aria-label="Step inside — continue">
+          <h2>Step <em>inside</em></h2>
+        </button>
+        <div class="gate-note">Click — or scroll once more</div>
+      </div>
+
+      <div class="stx" data-show="0.55" data-hide="0.70">
+        <div class="overline">The room</div>
+        <h2>A quieter kind<br>of <em>warm</em></h2>
+        <p class="lede">Mint walls, marble underfoot, and light that stays soft past midnight. Some cafes are for passing through. This one asks you to stay.</p>
+      </div>
+
+      <div class="stx" data-show="0.84" data-hide="1.01">
+        <div class="overline">The library corner</div>
+        <h2>Shelves of stories,<br>seats that <em>keep you</em></h2>
+        <div class="chips">
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zm0 0a2 2 0 0 0 2 2h13"/></svg>Reading nooks</span>
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8"/></svg>Study space</span>
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M3 10c5.5-5.4 12.5-5.4 18 0M6.5 13.5c3.3-3.2 7.7-3.2 11 0M10 17a3.5 3.5 0 0 1 4 0"/><circle cx="12" cy="19.4" r=".8" fill="currentColor"/></svg>Fast wifi</span>
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M12 3v2M7 4.5l1 1.8M17 4.5l-1 1.8"/><path d="M5 10h14l-1.2 9.5a2 2 0 0 1-2 1.5H8.2a2 2 0 0 1-2-1.5L5 10z"/></svg>Rooftop lights</span>
+        </div>
+      </div>
+
+      <div class="scroll-hint" id="hint"><span>Scroll</span><div class="wheel"></div></div>
+    </div>
+  </section>
+
+  <!-- ================= BREATHER A : THE SPACE (full-bleed) ================= -->
+  <section class="breather mintish full-bleed" id="space">
+    <img class="fb-bg" src="images/staircase.webp" alt="Staircase gallery wall with framed botanical prints and warm stone lighting">
+    <div class="fb-scrim"></div>
+    <div class="fb-glow"></div>
+    <div class="inner">
+      <div class="b-copy">
+        <div class="overline">The space</div>
+        <h2>Every corner,<br><em>considered</em></h2>
+        <p>Botanical prints climb the stairwell. Hidden light warms raw stone. Three floors of small details you notice on your second visit, and love by your third.</p>
+        <div class="b-list">
+          <div class="row"><span class="k">i.</span>Gallery stairwell<span class="muted">Ground → Rooftop</span></div>
+          <div class="row"><span class="k">ii.</span>The library wall<span class="muted">First floor</span></div>
+          <div class="row"><span class="k">iii.</span>Terrace under string lights<span class="muted">Rooftop</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ACT II : THE KITCHEN ================= -->
+  <section class="act" id="act-burger" style="height:560vh">
+    <div class="stage">
+      <canvas class="film"></canvas>
+      <div class="ov-left"></div><div class="ov-bottom"></div><div class="tint"></div>
+
+      <div class="stx" data-show="0" data-hide="0.13">
+        <div class="overline">The kitchen</div>
+        <h2>Built,<br>not <em>assembled</em></h2>
+        <p class="lede">Watch it come together. Scroll slowly.</p>
+      </div>
+
+      <div class="stx step" data-show="0.17" data-hide="0.29">
+        <div class="num">01 — The base</div>
+        <h3>Char-grilled beef</h3>
+        <p>Thick-cut, seared dark, resting on a glazed bun already pooling with cheese.</p>
+      </div>
+
+      <div class="stx step" data-show="0.38" data-hide="0.52">
+        <div class="num">02 — The crown jewel</div>
+        <h3>Crispy chicken,<br>molten cheddar</h3>
+        <p>Double-crunch fried chicken under a slow cascade of cheese that refuses to hurry.</p>
+      </div>
+
+      <div class="stx step" data-show="0.60" data-hide="0.74">
+        <div class="num">03 — The crunch</div>
+        <h3>Pickles, onion, lettuce</h3>
+        <p>Sharp, cold and fresh — the counterweight that makes the rich half richer.</p>
+      </div>
+
+      <div class="stx" data-show="0.86" data-hide="1.01">
+        <div class="overline">Signature</div>
+        <h2>The Backstreet<br><em>Burger</em></h2>
+        <p class="lede">Sesame brioche, toasted. Comfort food, taken seriously.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= BREATHER B : STAY AWHILE ================= -->
+  <section class="breather flip" id="stay">
+    <div class="inner">
+      <div class="b-media" data-tilt><div class="b-frame"></div><div class="shine"></div><img src="images/work-corner.webp" alt="Laptop and cappuccino on a granite counter with a warm lounge behind"></div>
+      <div class="b-copy">
+        <div class="overline">Stay awhile</div>
+        <h2>Bring your laptop.<br>Or your <em>favourite book.</em></h2>
+        <p>A separate study space, sockets where you need them, and coffee that keeps pace with your deadlines. Mornings are for focus, evenings for slow talk on the terrace.</p>
+        <div class="b-list">
+          <div class="row"><span class="k">i.</span>Dedicated study space<span class="muted">Quiet by design</span></div>
+          <div class="row"><span class="k">ii.</span>Workspace-friendly hours<span class="muted">Open daily</span></div>
+          <div class="row"><span class="k">iii.</span>Refills of warm light<span class="muted">Always</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ACT III : THE POUR ================= -->
+  <section class="act" id="act-bombon" style="height:520vh">
+    <div class="stage">
+      <canvas class="film"></canvas>
+      <div class="ov-left"></div><div class="ov-bottom"></div><div class="tint"></div>
+
+      <div class="stx" data-show="0" data-hide="0.15">
+        <div class="overline">The pour</div>
+        <h2>Café <em>Bombón</em></h2>
+        <p class="lede">Three layers. Zero shortcuts.</p>
+      </div>
+
+      <div class="stx step" data-show="0.24" data-hide="0.40">
+        <div class="num">01 — The foundation</div>
+        <h3>Sweet condensed milk</h3>
+        <p>Dense and patient at the bottom of the glass, waiting to be found.</p>
+      </div>
+
+      <div class="stx step" data-show="0.50" data-hide="0.66">
+        <div class="num">02 — The float</div>
+        <h3>A double shot,<br>laid on top</h3>
+        <p>Espresso poured slow enough to rest on the milk instead of sinking into it.</p>
+      </div>
+
+      <div class="stx step" data-show="0.72" data-hide="0.85">
+        <div class="num">03 — The crown</div>
+        <h3>Foam &amp; cocoa</h3>
+        <p>A soft cap of steamed foam, dusted dark, dotted with chocolate.</p>
+      </div>
+
+      <div class="stx" data-show="0.90" data-hide="1.01">
+        <div class="overline">Drink it layered · stir it sweet</div>
+        <h2>Layers you<br>can <em>taste</em></h2>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= MENU ================= -->
+  <section id="menu">
+    <div class="m-head rv">
+      <div>
+        <div class="overline">From the counter</div>
+        <h2>House <em>favourites</em></h2>
+      </div>
+      <div class="note">Seasonal specials on the board</div>
+    </div>
+    <div class="m-grid">
+      <div class="m-card photo" data-hover data-tilt>
+        <div class="img-wrap"><img src="images/drinks-tray.webp" alt="Tray of layered Cafe Bombon glasses and a Spanish latte under the Backstreet Cafe sign" loading="lazy"></div>
+        <div class="veil"></div><div class="shine"></div>
+        <div class="meta">
+          <div class="kind">Coffee, layered</div>
+          <h3>The Bombón flight</h3>
+          <p>Café Bombón, Spanish Latte and friends — espresso and condensed milk in every happy ratio.</p>
+        </div>
+      </div>
+      <div class="m-card txt" data-hover>
+        <div>
+          <div class="kind">Espresso bar</div>
+          <h3>Cups of joy</h3>
+          <div class="divider"></div>
+          <ul>
+            <li><span>Café Bombón</span><span>layered &amp; sweet</span></li>
+            <li><span>Spanish Latte</span><span>silky, mellow</span></li>
+            <li><span>Cappuccino</span><span>classic art</span></li>
+            <li><span>Iced Spanish Latte</span><span>summer's answer</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="m-card txt" data-hover>
+        <div>
+          <div class="kind">Kitchen &amp; coolers</div>
+          <h3>Beyond the beans</h3>
+          <div class="divider"></div>
+          <ul>
+            <li><span>The Backstreet Burger</span><span>chicken &amp; beef</span></li>
+            <li><span>Blue Mojito</span><span>electric &amp; icy</span></li>
+            <li><span>Chocolate Sundae Float</span><span>unapologetic</span></li>
+            <li><span>All-day snacks</span><span>ask the counter</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="m-card photo" data-hover data-tilt>
+        <div class="img-wrap"><img src="images/mojito.webp" alt="Vivid blue mojito with mint, lemon and ice on a black background" loading="lazy"></div>
+        <div class="veil"></div><div class="shine"></div>
+        <div class="meta">
+          <div class="kind">Refreshment, done right</div>
+          <h3>Feeling the heat?</h3>
+          <p>Our coolers capture the essence of summer in every sip. The blue one glows, too.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= VISIT / CTA ================= -->
+  <section id="visit">
+    <div class="v-moon" aria-hidden="true"></div>
+    <div class="overline rv">Find the glow</div>
+    <h2 class="rv">Every day feels<br>a little <em>magical</em></h2>
+    <p class="v-sub rv">Tucked in Thapa Gau, Baneswor — look for the moon above and the string lights below. Come for the coffee. Stay for the corner that becomes yours.</p>
+    <div class="v-actions rv">
+      <a class="btn primary" data-hover href="https://www.google.com/maps/search/?api=1&query=Backstreet+Cafe+Thapa+Gau+Baneswor+Kathmandu" target="_blank" rel="noopener">Get directions</a>
+      <a class="btn ghost" data-hover href="https://www.instagram.com/backstreetcafenp/" target="_blank" rel="noopener">Follow @backstreetcafenp</a>
+    </div>
+    <div class="v-card rv">
+      <div class="row"><span class="lab">Where</span><span>Thapa Gau, Baneswor · Kathmandu</span></div>
+      <div class="row"><span class="lab">Instagram</span><a href="https://www.instagram.com/backstreetcafenp/" target="_blank" rel="noopener" data-hover>@backstreetcafenp</a></div>
+      <div class="row"><span class="lab">Good for</span><span>Study · Work · Slow evenings</span></div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="f-brand">Backstreet Cafe</div>
+    <div class="f-note"><em>Moon above. Lights below.</em> &nbsp;·&nbsp; © Backstreet Cafe, Kathmandu</div>
+  </footer>
+
+</main>
+
+<script>
+(() => {
+"use strict";
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isMobile = matchMedia('(max-width: 768px)').matches;
+const coarse = matchMedia('(hover: none), (pointer: coarse)').matches;
+const DPR = Math.min(devicePixelRatio || 1, 2);
+
+/* ============ custom cursor ============ */
+if (!coarse) {
+  const dot = document.getElementById('cursor-dot');
+  const ring = document.getElementById('cursor-ring');
+  let mx = innerWidth/2, my = innerHeight/2, rx = mx, ry = my;
+  addEventListener('pointermove', e => {
+    mx = e.clientX; my = e.clientY;
+    dot.style.transform = `translate(${mx}px,${my}px) translate(-50%,-50%)`;
+  }, {passive:true});
+  (function ringLoop(){
+    rx += (mx-rx)*0.16; ry += (my-ry)*0.16;
+    ring.style.transform = `translate(${rx}px,${ry}px) translate(-50%,-50%)`;
+    requestAnimationFrame(ringLoop);
+  })();
+  document.querySelectorAll('a, button, [data-hover]').forEach(el => {
+    el.addEventListener('pointerenter', () => ring.classList.add('hovering'));
+    el.addEventListener('pointerleave', () => ring.classList.remove('hovering'));
+  });
+}
+
+/* ============ particles ============ */
+if (!reduced) {
+  const pc = document.getElementById('particles');
+  const pctx = pc.getContext('2d');
+  let pw, ph, parts;
+  const N = isMobile ? 18 : 40;
+  function pInit(){
+    pw = pc.width = innerWidth * DPR; ph = pc.height = innerHeight * DPR;
+    pc.style.width = innerWidth+'px'; pc.style.height = innerHeight+'px';
+    parts = Array.from({length:N}, () => ({
+      x: Math.random()*pw, y: Math.random()*ph,
+      r: (0.3 + Math.random()*1.5) * DPR,
+      vx: (Math.random()-.5)*.12*DPR, vy: (-.04 - Math.random()*.14)*DPR,
+      a: .05 + Math.random()*.3, tw: Math.random()*Math.PI*2
+    }));
+  }
+  pInit(); addEventListener('resize', pInit);
+  (function pLoop(){
+    pctx.clearRect(0,0,pw,ph);
+    for (const p of parts) {
+      p.x += p.vx; p.y += p.vy; p.tw += .015;
+      if (p.y < -4) { p.y = ph+4; p.x = Math.random()*pw; }
+      if (p.x < -4) p.x = pw+4; if (p.x > pw+4) p.x = -4;
+      pctx.beginPath();
+      pctx.arc(p.x, p.y, p.r, 0, 7);
+      pctx.fillStyle = `rgba(240,228,200,${p.a * (0.7 + 0.3*Math.sin(p.tw))})`;
+      pctx.fill();
+    }
+    requestAnimationFrame(pLoop);
+  })();
+} else {
+  document.getElementById('particles').style.display = 'none';
+}
+
+/* ============ letter split ============ */
+document.querySelectorAll('[data-split]').forEach(el => {
+  const txt = el.getAttribute('data-split-em') !== null ? el.textContent : el.textContent;
+  const target = el;
+  const chars = target.textContent.split('');
+  target.textContent = '';
+  chars.forEach((ch, i) => {
+    const s = document.createElement('span');
+    s.textContent = ch === ' ' ? ' ' : ch;
+    s.style.transitionDelay = (0.05 + i*0.045)+'s';
+    target.appendChild(s);
+  });
+});
+
+/* ============ scroll act engine ============ */
+class ScrollAct {
+  constructor(opts) {
+    this.el = document.getElementById(opts.id);
+    this.stage = this.el.querySelector('.stage');
+    this.canvas = this.el.querySelector('canvas.film');
+    this.ctx = this.canvas.getContext('2d');
+    this.tintEl = this.el.querySelector('.tint');
+    this.dir = `frames/${opts.dir}/${isMobile ? 'mobile' : 'desktop'}`;
+    this.count = opts.count;
+    this.dwells = opts.dwells;          // dwell centers in FRAME-progress space
+    this.tint = opts.tint;              // fn(v) -> css color
+    this.heroFrame = opts.heroFrame;    // frame index for reduced-motion / poster
+    this.texts = [...this.el.querySelectorAll('.stx')];
+    this.frames = new Array(this.count).fill(null);
+    this.loadedCount = 0;
+    this.current = 0;
+    this.lastDrawn = -1;
+    this.onprogress = null;
+    this.buildRemap();
+    this.resize();
+  }
+  /* density peaks at dwell frames -> more scroll consumed there */
+  buildRemap() {
+    const N = 1600, W = 0.045, PEAK = 3.4;
+    const dens = new Float64Array(N);
+    for (let i = 0; i < N; i++) {
+      const v = i/(N-1);
+      let d = 1;
+      for (const c of this.dwells) d += PEAK * Math.exp(-((v-c)*(v-c))/(2*W*W));
+      dens[i] = d;
+    }
+    // H(v): frame-progress -> scroll fraction (cumulative density)
+    const H = new Float64Array(N); let acc = 0;
+    for (let i = 0; i < N; i++) { acc += dens[i]; H[i] = acc; }
+    for (let i = 0; i < N; i++) H[i] /= acc;
+    this.H = H; // forward map kept for scrollFrac()
+    // invert: scroll fraction s -> frame progress v
+    const M = 2000; this.lut = new Float64Array(M+1);
+    let j = 0;
+    for (let k = 0; k <= M; k++) {
+      const s = k/M;
+      while (j < N-1 && H[j] < s) j++;
+      const h1 = j>0 ? H[j-1] : 0, h2 = H[j];
+      const v1 = j>0 ? (j-1)/(N-1) : 0, v2 = j/(N-1);
+      this.lut[k] = h2 > h1 ? v1 + (v2-v1)*(s-h1)/(h2-h1) : v2;
+    }
+  }
+  remap(s) {
+    const k = Math.max(0, Math.min(1, s)) * 2000;
+    const i = Math.floor(k), f = k - i;
+    return i >= 2000 ? this.lut[2000] : this.lut[i]*(1-f) + this.lut[i+1]*f;
+  }
+  scrollFrac(v) { // frame-progress -> scroll fraction within the act
+    const i = Math.max(0, Math.min(this.H.length-1, Math.round(v * (this.H.length-1))));
+    return this.H[i];
+  }
+  scrollYFor(v) {
+    return this.el.offsetTop + this.scrollFrac(v) * (this.el.offsetHeight - innerHeight);
+  }
+  framePath(i) { return `${this.dir}/frame-${String(i+1).padStart(4,'0')}.webp`; }
+  loadFrame(i) {
+    const done = f => {
+      if (f) this.frames[i] = f;
+      this.loadedCount++;
+      if (this.onprogress) this.onprogress(this.loadedCount, this.count);
+    };
+    // ImageBitmap = fully decoded off-thread, cheapest possible drawImage
+    if (window.createImageBitmap) {
+      return fetch(this.framePath(i))
+        .then(r => r.blob()).then(b => createImageBitmap(b))
+        .then(done, () => done(null));
+    }
+    return new Promise(res => {
+      const img = new Image();
+      img.decoding = 'async';
+      img.onload = () => img.decode().then(() => { done(img); res(); }, () => { done(img); res(); });
+      img.onerror = () => { done(null); res(); };
+      img.src = this.framePath(i);
+    });
+  }
+  async loadCritical() {
+    // every 5th frame + hero: enough coverage to scroll immediately
+    const critical = [this.heroFrame];
+    for (let i = 0; i < this.count; i += 5) critical.push(i);
+    this.criticalCount = new Set(critical).size;
+    await Promise.all([...new Set(critical)].map(i => this.loadFrame(i)));
+    this.draw(this.heroFrame);
+  }
+  async loadRest() {
+    // remaining in small batches, yielding to the main thread between each
+    const rest = [];
+    for (let i = 0; i < this.count; i++) if (!this.frames[i]) rest.push(i);
+    const B = this.gentle ? 3 : 8;
+    for (let b = 0; b < rest.length; b += B) {
+      await Promise.all(rest.slice(b, b+B).map(i => this.loadFrame(i)));
+      await new Promise(r => setTimeout(r, this.gentle ? 60 : 16));
+    }
+  }
+  async load() { await this.loadCritical(); await this.loadRest(); }
+  nearest(i) {
+    if (this.frames[i]) return this.frames[i];
+    for (let d = 1; d < this.count; d++) {
+      if (this.frames[i-d]) return this.frames[i-d];
+      if (this.frames[i+d]) return this.frames[i+d];
+    }
+    return null;
+  }
+  resize() {
+    // cap backing store near the frame resolution — pushing 2x-DPR pixels
+    // through canvas when the source is 1280px wide is pure waste
+    const frameW = isMobile ? 960 : 1280;
+    const ratio = Math.min(DPR, (frameW * 1.35) / innerWidth);
+    this.canvas.width = Math.round(innerWidth * ratio);
+    this.canvas.height = Math.round(innerHeight * ratio);
+    this.lastDrawn = -1;
+  }
+  coverDraw(img) {
+    const cw = this.canvas.width, ch = this.canvas.height;
+    const s = Math.max(cw/img.width, ch/img.height);
+    const w = img.width*s, h = img.height*s;
+    this.ctx.drawImage(img, (cw-w)/2, (ch-h)/2, w, h);
+  }
+  draw(x) {
+    // crossfade between adjacent frames: turns ~10fps source into fluid motion
+    const i0 = Math.max(0, Math.min(this.count-1, Math.floor(x)));
+    const i1 = Math.min(this.count-1, i0+1);
+    const frac = x - i0;
+    const a = this.frames[i0] || this.nearest(i0);
+    if (!a) return;
+    this.coverDraw(a);
+    if (frac > 0.02 && i1 !== i0 && this.frames[i1]) {
+      this.ctx.globalAlpha = frac;
+      this.coverDraw(this.frames[i1]);
+      this.ctx.globalAlpha = 1;
+    }
+  }
+  progress() {
+    const r = this.el.getBoundingClientRect();
+    return Math.max(0, Math.min(1, -r.top / (r.height - innerHeight)));
+  }
+  visible() {
+    const r = this.el.getBoundingClientRect();
+    return r.bottom > 0 && r.top < innerHeight;
+  }
+  tick() {
+    if (!this.visible()) return;
+    const v = this.remap(this.progress());           // frame-progress 0..1
+    const target = v * (this.count - 1);
+    this.current += (target - this.current) * 0.14;
+    if (Math.abs(this.current - target) < 0.004) this.current = target;
+    if (Math.abs(this.current - this.lastDrawn) > 0.004) {
+      this.draw(this.current);
+      this.lastDrawn = this.current;
+    }
+    for (const t of this.texts) {
+      const show = +t.dataset.show, hide = +t.dataset.hide;
+      t.classList.toggle('visible', v >= show && v < hide);
+    }
+    if (this.tintEl && this.tint) this.tintEl.style.background = this.tint(v);
+    if (this.onTick) this.onTick(v);
+  }
+}
+
+const lerpC = (a, b, t) => a.map((x,i) => Math.round(x + (b[i]-x)*t));
+const acts = [
+  new ScrollAct({
+    id:'act-arrival', dir:'arrival', count: isMobile ? 120 : 478,
+    dwells:[0.06, 0.27, 0.40, 0.60, 0.90],
+    heroFrame:0,
+    tint: v => {
+      const c = lerpC([34,48,77], [201,154,75], Math.min(1, v*1.4));
+      const a = 0.16 - v*0.06;
+      return `radial-gradient(120% 100% at 50% 40%, rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)}), transparent 75%)`;
+    }
+  }),
+  new ScrollAct({
+    id:'act-burger', dir:'burger', count:66,
+    dwells:[0.05, 0.22, 0.45, 0.67, 0.93],
+    heroFrame:65,
+    tint: () => `radial-gradient(120% 100% at 50% 55%, rgba(206,120,40,.08), transparent 75%)`
+  }),
+  new ScrollAct({
+    id:'act-bombon', dir:'bombon', count:66,
+    dwells:[0.05, 0.32, 0.58, 0.79, 0.95],
+    heroFrame:65,
+    tint: () => `radial-gradient(120% 100% at 50% 55%, rgba(140,90,45,.10), transparent 75%)`
+  })
+];
+
+addEventListener('resize', () => acts.forEach(a => { a.resize(); a.lastDrawn = -1; }));
+
+/* ============ loader + boot ============ */
+const loader = document.getElementById('loader');
+const lfill = document.getElementById('lfill');
+const lpct = document.getElementById('lpct');
+const hint = document.getElementById('hint');
+
+/* ============ the "Step inside" gate ============ */
+const gateText = document.getElementById('gate-text');
+const gateBtn = document.getElementById('gate-btn');
+const gate = { v: 0.40, engaged: false, unlocked: false, at: 0, y: 0 };
+
+function engageGate() {
+  gate.engaged = true;
+  gate.at = performance.now();
+  gate.y = acts[0].scrollYFor(gate.v);
+  gateText.classList.add('gate-live');
+  scrollTo({ top: gate.y, behavior: 'smooth' });
+}
+function unlockGate(advance) {
+  if (gate.unlocked) return;
+  gate.unlocked = true;
+  gateText.classList.remove('gate-live');
+  if (advance) scrollTo({ top: acts[0].scrollYFor(0.60), behavior: reduced ? 'auto' : 'smooth' });
+}
+gateBtn.addEventListener('click', () => unlockGate(true));
+// a deliberate second scroll (after the pause has registered) also opens the door
+let touchY = 0;
+addEventListener('touchstart', e => { touchY = e.touches[0].clientY; }, { passive: true });
+const gateScrollAttempt = e => {
+  if (!gate.engaged || gate.unlocked) return;
+  const down = e.type === 'wheel' ? e.deltaY > 0 : (touchY - e.touches[0].clientY) > 0;
+  if (!down) return; // scrolling back up is always allowed
+  if (e.cancelable) e.preventDefault();
+  if (performance.now() - gate.at > 900) unlockGate(true);
+};
+addEventListener('wheel', gateScrollAttempt, { passive: false });
+addEventListener('touchmove', gateScrollAttempt, { passive: false });
+addEventListener('keydown', e => {
+  if (gate.engaged && !gate.unlocked && ['ArrowDown','PageDown',' '].includes(e.key)) {
+    e.preventDefault();
+    if (performance.now() - gate.at > 900) unlockGate(true);
+  }
+});
+// hard clamp: nothing scrolls past the door until it opens
+addEventListener('scroll', () => {
+  if (gate.engaged && !gate.unlocked && scrollY > gate.y + 2) scrollTo(0, gate.y);
+}, { passive: true });
+
+acts[0].onTick = v => {
+  hint.classList.toggle('gone', v > 0.04);
+  if (!gate.unlocked && !gate.engaged && v >= gate.v - 0.008) engageGate();
+};
+if (reduced) gate.unlocked = true;
+
+async function boot() {
+  const arrival = acts[0];
+  const critN = Math.floor(arrival.count/5) + 2;
+  arrival.onprogress = n => {
+    const p = Math.min(100, Math.round(n/critN*100));
+    lfill.style.width = p+'%'; lpct.textContent = p+'%';
+  };
+  if (reduced) {
+    // static experience: hero frames only, all first-texts shown
+    await Promise.all(acts.map(a => a.loadFrame(a.heroFrame).then(() => a.draw(a.heroFrame))));
+    acts.forEach(a => a.texts[0] && a.texts[0].classList.add('visible'));
+    document.querySelectorAll('.rv, .breather, #menu').forEach(el => el.classList.add('in'));
+    loader.classList.add('done');
+    return;
+  }
+  // reveal as soon as the critical frame set is in — the rest streams behind
+  await arrival.loadCritical();
+  loader.classList.add('done');
+  hint.classList.add('on');
+  arrival.loadRest().then(() => {
+    const idle = window.requestIdleCallback || (fn => setTimeout(fn, 800));
+    idle(async () => {
+      for (const a of acts.slice(1)) { a.gentle = true; await a.load(); }
+    });
+  });
+  (function loop(){ acts.forEach(a => a.tick()); requestAnimationFrame(loop); })();
+}
+boot();
+
+/* ============ header + chapters ============ */
+const head = document.getElementById('site-head');
+head.querySelector('.visit-link').addEventListener('click', () => unlockGate(false));
+const chaptersEl = document.getElementById('chapters');
+const chapterDefs = [
+  {label:'Arrival', target:'#act-arrival'},
+  {label:'The Space', target:'#space'},
+  {label:'The Kitchen', target:'#act-burger'},
+  {label:'The Pour', target:'#act-bombon'},
+  {label:'Visit', target:'#visit'}
+];
+chapterDefs.forEach((c, i) => {
+  const b = document.createElement('button');
+  b.className = 'ch'; b.setAttribute('aria-label', c.label);
+  b.innerHTML = `<span class="dot"></span><span class="lbl">${c.label}</span>`;
+  b.addEventListener('click', () => {
+    unlockGate(false); // deliberate navigation opens the door
+    document.querySelector(c.target).scrollIntoView({behavior: reduced ? 'auto' : 'smooth'});
+  });
+  chaptersEl.appendChild(b);
+  if (i < chapterDefs.length-1) {
+    const ln = document.createElement('span'); ln.className = 'ln'; chaptersEl.appendChild(ln);
+  }
+});
+const chBtns = [...chaptersEl.querySelectorAll('.ch')];
+function onScroll() {
+  head.classList.toggle('on', scrollY > innerHeight*0.6);
+  let active = 0;
+  chapterDefs.forEach((c, i) => {
+    const el = document.querySelector(c.target);
+    if (el.getBoundingClientRect().top <= innerHeight*0.5) active = i;
+  });
+  chBtns.forEach((b, i) => b.classList.toggle('active', i === active));
+}
+addEventListener('scroll', onScroll, {passive:true}); onScroll();
+
+/* ============ mouse-reactive gradients (trailing glow) ============ */
+const glowSections = [...document.querySelectorAll('.breather, #menu, #visit')].map(sec => {
+  const st = { sec, tx: 50, ty: 35, cx: 50, cy: 35, live: false };
+  sec.addEventListener('pointermove', e => {
+    const r = sec.getBoundingClientRect();
+    st.tx = (e.clientX - r.left)/r.width*100;
+    st.ty = (e.clientY - r.top)/r.height*100;
+    st.live = true;
+  }, {passive:true});
+  return st;
+});
+const fbParallax = [...document.querySelectorAll('.breather.full-bleed')]
+  .map(sec => ({ sec, img: sec.querySelector('.fb-bg') }));
+if (!reduced) (function glowLoop(){
+  for (const st of glowSections) {
+    if (!st.live) continue;
+    st.cx += (st.tx - st.cx) * 0.07;   // the light lags the cursor — feels alive
+    st.cy += (st.ty - st.cy) * 0.07;
+    st.sec.style.setProperty('--mx', st.cx.toFixed(2)+'%');
+    st.sec.style.setProperty('--my', st.cy.toFixed(2)+'%');
+  }
+  // scroll-driven parallax settle on full-bleed images: continuous motion
+  // through the section boundary, so the handoff from the video act flows
+  for (const { sec, img } of fbParallax) {
+    const r = sec.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > innerHeight) continue;
+    const p = Math.max(0, Math.min(1, (innerHeight - r.top) / (innerHeight + r.height)));
+    const y = (0.5 - p) * 70;                 // drifts up as you scroll in
+    const s = 1.1 - p * 0.07;                 // eases from 1.10 to ~1.03
+    img.style.transform = `translateY(${y.toFixed(1)}px) scale(${s.toFixed(4)})`;
+  }
+  requestAnimationFrame(glowLoop);
+})();
+
+/* ============ tilt + shine on media ============ */
+if (!coarse && !reduced) document.querySelectorAll('[data-tilt]').forEach(el => {
+  el.addEventListener('pointermove', e => {
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left)/r.width, py = (e.clientY - r.top)/r.height;
+    el.style.transform = `perspective(950px) rotateX(${((0.5-py)*5).toFixed(2)}deg) rotateY(${((px-0.5)*5).toFixed(2)}deg)`;
+    el.style.setProperty('--sx', (px*100).toFixed(1)+'%');
+    el.style.setProperty('--sy', (py*100).toFixed(1)+'%');
+    el.style.willChange = 'transform';
+  }, {passive:true});
+  el.addEventListener('pointerleave', () => {
+    el.style.transform = 'perspective(950px)';
+    el.style.willChange = 'auto';
+  });
+});
+
+/* ============ reveals ============ */
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+}), {threshold: 0.18});
+document.querySelectorAll('.breather, #menu, .rv').forEach(el => io.observe(el));
+
+})();
+</script>
+</body>
+</html>
