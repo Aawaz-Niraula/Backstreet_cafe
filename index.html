@@ -907,6 +907,7 @@ class ScrollAct {
     // smooth the velocity: raw per-tick deltas are noisy during light touches
     // and the noise must not drive the park/unpark decision
     this.velS = (this.velS ?? 0) + (vel - (this.velS ?? 0)) * Math.min(1, dt / 50);
+    if (Math.abs(this.velS) > 0.02) this.lastDir = this.velS > 0 ? 1 : -1;
     // PARKING with hysteresis. Re-rounding the target on every quiet tick made
     // two adjacent frames fight whenever the scroll rested near a frame
     // boundary — round() flipped on sub-pixel scroll noise and the act
@@ -1071,17 +1072,20 @@ function snapCheck(now) {
     const v = a.parked / (a.count - 1);
     // text already on screen? then this stop is a fine place to be
     if (a.texts.some(t => v >= +t.dataset.show && v < +t.dataset.hide)) continue;
+    // carry the story onward: glide to the NEXT section in the direction of
+    // travel (entry edge going down, exit edge coming back up), not the nearest
+    const fwd = (a.lastDir ?? 1) >= 0;
     let best = null, bestD = 1e9;
     for (const t of a.texts) {
       let lo = +t.dataset.show + 0.04, hi = +t.dataset.hide - 0.05;
       if (lo > hi) lo = hi = (+t.dataset.show + +t.dataset.hide) / 2;
-      const tv = Math.min(hi, Math.max(lo, v));
-      const d = Math.abs(tv - v);
-      if (d < bestD) { bestD = d; best = tv; }
+      const tv = fwd ? lo : hi;
+      const d = fwd ? tv - v : v - tv;
+      if (d > 0 && d < bestD) { bestD = d; best = tv; }
     }
     if (best == null) continue;
     const y = a.scrollYFor(best);
-    if (Math.abs(y - scrollY) > 420) continue;   // never fly far
+    if (Math.abs(y - scrollY) > 600) continue;   // never fly far
     snapHold = now + 1400;
     scrollTo({ top: y, behavior: 'smooth' });
   }
