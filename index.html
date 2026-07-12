@@ -914,12 +914,12 @@ class ScrollAct {
     // ignores drift up to 0.6 frames and wakes only for a deliberate move.
     if (this.parked != null &&
         (Math.abs(this.velS) > 0.08 || Math.abs(targetF - this.parked) > 0.6)) {
-      this.parked = null; this.stillFor = 0;
+      this.parked = null; this.stillFor = 0; this.justParked = false;
     }
     if (this.parked == null) {
       if (Math.abs(this.velS) < 0.02) {
         this.stillFor = (this.stillFor ?? 0) + dt;
-        if (this.stillFor > 120) this.parked = Math.round(targetF);
+        if (this.stillFor > 120) { this.parked = Math.round(targetF); this.justParked = true; }
       } else this.stillFor = 0;
     }
     // crossfade while moving; parked rests on a crisp integer frame
@@ -964,22 +964,24 @@ const acts = [
       return `radial-gradient(120% 100% at 50% 40%, rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)}), transparent 75%)`;
     }
   }),
+  // food acts: mobile carries 120 frames (~native 24fps — 66 left visible
+  // steps between fast-motion frames); desktop keeps the 66-frame sets
   new ScrollAct({
-    id:'act-burger', dir:'burger', count:66,
+    id:'act-burger', dir:'burger', count: isMobile ? 120 : 66,
     dwells:[0.05, 0.22, 0.45, 0.67, 0.93],
-    heroFrame:65,
+    heroFrame: isMobile ? 119 : 65,
     tint: () => `radial-gradient(120% 100% at 50% 55%, rgba(206,120,40,.08), transparent 75%)`
   }),
   new ScrollAct({
-    id:'act-bombon', dir:'bombon', count:66,
+    id:'act-bombon', dir:'bombon', count: isMobile ? 120 : 66,
     dwells:[0.05, 0.32, 0.58, 0.79, 0.95],
-    heroFrame:65,
+    heroFrame: isMobile ? 119 : 65,
     tint: () => `radial-gradient(120% 100% at 50% 55%, rgba(140,90,45,.10), transparent 75%)`
   }),
   new ScrollAct({
-    id:'act-pizza', dir:'pizza', count:66,
+    id:'act-pizza', dir:'pizza', count: isMobile ? 120 : 66,
     dwells:[0.05, 0.32, 0.58, 0.79, 0.95],
-    heroFrame:65,
+    heroFrame: isMobile ? 119 : 65,
     tint: () => `radial-gradient(120% 100% at 50% 55%, rgba(202,84,32,.10), transparent 75%)`
   })
 ];
@@ -1050,6 +1052,41 @@ acts[0].onTick = v => {
 };
 if (reduced) gate.unlocked = true;
 
+/* ============ rest on a story beat (mobile) ============ */
+// a stop in a no-text gap glides to the nearest text section, so every pause
+// lands on a composed, captioned frame instead of an arbitrary in-between
+let touchDown = false, snapHold = 0;
+addEventListener('touchstart', () => touchDown = true,  { passive: true });
+addEventListener('touchend',   () => touchDown = false, { passive: true });
+addEventListener('touchcancel',() => touchDown = false, { passive: true });
+function snapCheck(now) {
+  if (!isMobile || reduced || touchDown || now < snapHold) return;
+  if (gate.engaged && !gate.unlocked) return;
+  for (const a of acts) {
+    if (!a.justParked) continue;
+    a.justParked = false;
+    if (!a.visible(0)) continue;
+    const p = a.progress();
+    if (p <= 0.002 || p >= 0.998) continue;      // resting between sections
+    const v = a.parked / (a.count - 1);
+    // text already on screen? then this stop is a fine place to be
+    if (a.texts.some(t => v >= +t.dataset.show && v < +t.dataset.hide)) continue;
+    let best = null, bestD = 1e9;
+    for (const t of a.texts) {
+      let lo = +t.dataset.show + 0.04, hi = +t.dataset.hide - 0.05;
+      if (lo > hi) lo = hi = (+t.dataset.show + +t.dataset.hide) / 2;
+      const tv = Math.min(hi, Math.max(lo, v));
+      const d = Math.abs(tv - v);
+      if (d < bestD) { bestD = d; best = tv; }
+    }
+    if (best == null) continue;
+    const y = a.scrollYFor(best);
+    if (Math.abs(y - scrollY) > 420) continue;   // never fly far
+    snapHold = now + 1400;
+    scrollTo({ top: y, behavior: 'smooth' });
+  }
+}
+
 async function boot() {
   const arrival = acts[0];
   const critN = Math.floor(arrival.count/5) + 2;
@@ -1078,7 +1115,7 @@ async function boot() {
       for (const a of acts.slice(1)) { a.gentle = true; await a.load(); }
     });
   });
-  (function loop(now){ acts.forEach(a => a.step(now)); requestAnimationFrame(loop); })(performance.now());
+  (function loop(now){ acts.forEach(a => a.step(now)); snapCheck(now); requestAnimationFrame(loop); })(performance.now());
 }
 boot();
 
