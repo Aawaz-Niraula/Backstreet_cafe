@@ -265,6 +265,9 @@ footer .f-note em{font-family:var(--heading);color:var(--dim)}
 
 /* mobile scale-down: desktop clamps read oversized on small screens */
 @media (max-width:768px){
+  /* soft-light forces a full-screen blend re-composite on every canvas draw;
+     at 8% alpha a normal wash looks the same and costs the GPU nothing */
+  .act .tint{mix-blend-mode:normal}
   .stx{max-width:88vw}
   .stx h1{font-size:clamp(30px,10vw,40px)}
   .stx h2{font-size:clamp(24px,7.4vw,30px)}
@@ -809,6 +812,7 @@ class ScrollAct {
     this.asleep = true;
     this.lastEnsure = -99;
     this.queue = [];
+    this.parked = null; this.stillFor = 0; this.velS = 0;
     for (let i = 0; i < this.count; i++)
       if (this.frames[i]) { if (this.frames[i].close) this.frames[i].close(); this.frames[i] = null; }
   }
@@ -900,15 +904,32 @@ class ScrollAct {
     // on 60Hz and 120Hz ProMotion screens
     const vel = dt > 0 ? (targetF - (this.lastTarget ?? targetF)) / dt * 16.7 : 0;
     this.lastTarget = targetF;
-    // crossfade only while moving; at rest settle onto a crisp integer frame
+    // smooth the velocity: raw per-tick deltas are noisy during light touches
+    // and the noise must not drive the park/unpark decision
+    this.velS = (this.velS ?? 0) + (vel - (this.velS ?? 0)) * Math.min(1, dt / 50);
+    // PARKING with hysteresis. Re-rounding the target on every quiet tick made
+    // two adjacent frames fight whenever the scroll rested near a frame
+    // boundary — round() flipped on sub-pixel scroll noise and the act
+    // oscillated between the two ("vibrating" frame). Parked now latches: it
+    // ignores drift up to 0.6 frames and wakes only for a deliberate move.
+    if (this.parked != null &&
+        (Math.abs(this.velS) > 0.08 || Math.abs(targetF - this.parked) > 0.6)) {
+      this.parked = null; this.stillFor = 0;
+    }
+    if (this.parked == null) {
+      if (Math.abs(this.velS) < 0.02) {
+        this.stillFor = (this.stillFor ?? 0) + dt;
+        if (this.stillFor > 120) this.parked = Math.round(targetF);
+      } else this.stillFor = 0;
+    }
+    // crossfade while moving; parked rests on a crisp integer frame
     // (a parked fractional blend reads as a ghosted double-exposure)
-    const still = Math.abs(vel) < 0.02;
-    const target = still ? Math.round(targetF) : targetF;
+    const target = this.parked ?? targetF;
     // TIME-based easing (exp decay over dt): a per-tick factor eases unevenly
     // whenever rAF cadence hiccups or the display runs at 120Hz — that
     // unevenness reads as jitter. Mobile tracks tighter than desktop: touch
     // scroll is already smooth, wheel input is steppy and needs the softness.
-    const tau = isMobile ? (still ? 24 : 45) : 110;  // ms to close ~63% of gap
+    const tau = isMobile ? (this.parked != null ? 24 : 45) : 110;  // ms to close ~63% of gap
     this.current += (target - this.current) * (1 - Math.exp(-dt / tau));
     if (Math.abs(this.current - target) < 0.004) this.current = target;
     if (this.windowed) {
