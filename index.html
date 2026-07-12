@@ -775,22 +775,40 @@ class ScrollAct {
     if (i < 0 || i >= this.count || this.frames[i] || this.pending.has(i) || !this.blobs[i]) return Promise.resolve();
     this.pending.add(i);
     return createImageBitmap(this.blobs[i])
-      .then(b => { this.frames[i] = b; this.pending.delete(i); }, () => this.pending.delete(i));
+      .then(b => { this.frames[i] = b; this.pending.delete(i); this.pump(); },
+            () => { this.pending.delete(i); this.pump(); });
   }
-  ensureWindow(c) {
+  // sliding window biased in the scroll direction, decoded a few at a time —
+  // firing 30+ createImageBitmap calls at once saturates the decode pool and
+  // stalls the main thread mid-scroll; the miss shows up as a nearest-frame
+  // jump when the target frame isn't ready
+  ensureWindow(c, dir = 0) {
     if (!this.windowed) return;
     this.lastEnsure = c;
-    for (let d = 0; d <= 18; d++) { this.decodeOne(c + d); if (d) this.decodeOne(c - d); }
+    const fwd = dir < 0 ? -1 : 1;
+    const want = [];
+    for (let d = 0; d <= 26; d++) {
+      want.push(c + d * fwd);
+      if (d >= 1 && d <= 10) want.push(c - d * fwd);
+    }
+    this.queue = want.filter(i =>
+      i >= 0 && i < this.count && !this.frames[i] && !this.pending.has(i) && this.blobs[i]);
+    this.pump();
     for (let i = 0; i < this.count; i++)
       if (this.frames[i] && Math.abs(i - c) > 44) {
         if (this.frames[i].close) this.frames[i].close();
         this.frames[i] = null;
       }
   }
+  pump() {
+    if (!this.queue) return;
+    while (this.pending.size < 3 && this.queue.length) this.decodeOne(this.queue.shift());
+  }
   sleep() {
     if (!this.windowed || this.asleep) return;
     this.asleep = true;
     this.lastEnsure = -99;
+    this.queue = [];
     for (let i = 0; i < this.count; i++)
       if (this.frames[i]) { if (this.frames[i].close) this.frames[i].close(); this.frames[i] = null; }
   }
@@ -859,7 +877,7 @@ class ScrollAct {
     const r = this.el.getBoundingClientRect();
     return r.bottom > -margin && r.top < VPH + margin;
   }
-  step() {
+  step(now) {
     if (!this.visible(VPH * 1.2)) { this.sleep(); return; }
     this.asleep = false;
     if (!this.visible(0)) {
@@ -870,26 +888,32 @@ class ScrollAct {
       }
       return;
     }
-    this.tick();
+    this.tick(now);
   }
-  tick() {
+  tick(now) {
     if (!this.visible()) return;
+    const dt = Math.min(50, now - (this.lastTick ?? now));
+    this.lastTick = now;
     const v = this.remap(this.progress());           // frame-progress 0..1
     const targetF = v * (this.count - 1);
-    const vel = targetF - (this.lastTarget ?? targetF);
+    // velocity in frames-per-60Hz-tick so the threshold means the same thing
+    // on 60Hz and 120Hz ProMotion screens
+    const vel = dt > 0 ? (targetF - (this.lastTarget ?? targetF)) / dt * 16.7 : 0;
     this.lastTarget = targetF;
     // crossfade only while moving; at rest settle onto a crisp integer frame
     // (a parked fractional blend reads as a ghosted double-exposure)
-    const target = Math.abs(vel) < 0.02 ? Math.round(targetF) : targetF;
-    // touch scroll is already smooth (momentum), so mobile tracks it tightly
-    // and parks almost instantly at rest — desktop wheel input needs the
-    // softer easing or each wheel step reads as a jump
-    const k = isMobile ? (Math.abs(vel) < 0.02 ? 0.5 : 0.3) : 0.14;
-    this.current += (target - this.current) * k;
+    const still = Math.abs(vel) < 0.02;
+    const target = still ? Math.round(targetF) : targetF;
+    // TIME-based easing (exp decay over dt): a per-tick factor eases unevenly
+    // whenever rAF cadence hiccups or the display runs at 120Hz — that
+    // unevenness reads as jitter. Mobile tracks tighter than desktop: touch
+    // scroll is already smooth, wheel input is steppy and needs the softness.
+    const tau = isMobile ? (still ? 24 : 45) : 110;  // ms to close ~63% of gap
+    this.current += (target - this.current) * (1 - Math.exp(-dt / tau));
     if (Math.abs(this.current - target) < 0.004) this.current = target;
     if (this.windowed) {
       const f = Math.round(this.current);
-      if (Math.abs(f - this.lastEnsure) >= 3) this.ensureWindow(f);
+      if (Math.abs(f - this.lastEnsure) >= 3) this.ensureWindow(f, Math.sign(vel));
     }
     if (Math.abs(this.current - this.lastDrawn) > 0.004) {
       this.draw(this.current);
@@ -899,7 +923,10 @@ class ScrollAct {
       const show = +t.dataset.show, hide = +t.dataset.hide;
       t.classList.toggle('visible', v >= show && v < hide);
     }
-    if (this.tintEl && this.tint) this.tintEl.style.background = this.tint(v);
+    if (this.tintEl && this.tint) {
+      const tint = this.tint(v);
+      if (tint !== this.lastTint) { this.lastTint = tint; this.tintEl.style.background = tint; }
+    }
     if (this.onTick) this.onTick(v);
   }
 }
@@ -959,11 +986,18 @@ function engageGate() {
   gate.at = performance.now();
   gate.y = acts[0].scrollYFor(gate.v);
   gateText.classList.add('gate-live');
+  // non-passive listeners force every touchmove through the main thread
+  // before the browser may scroll — so they exist ONLY while the door is
+  // shut, never for the rest of the session
+  addEventListener('wheel', gateScrollAttempt, { passive: false });
+  addEventListener('touchmove', gateScrollAttempt, { passive: false });
   scrollTo({ top: gate.y, behavior: 'smooth' });
 }
 function unlockGate(advance) {
   if (gate.unlocked) return;
   gate.unlocked = true;
+  removeEventListener('wheel', gateScrollAttempt);
+  removeEventListener('touchmove', gateScrollAttempt);
   gateText.classList.remove('gate-live');
   if (advance) scrollTo({ top: acts[0].scrollYFor(0.60), behavior: reduced ? 'auto' : 'smooth' });
 }
@@ -978,8 +1012,6 @@ const gateScrollAttempt = e => {
   if (e.cancelable) e.preventDefault();
   if (performance.now() - gate.at > 900) unlockGate(true);
 };
-addEventListener('wheel', gateScrollAttempt, { passive: false });
-addEventListener('touchmove', gateScrollAttempt, { passive: false });
 addEventListener('keydown', e => {
   if (gate.engaged && !gate.unlocked && ['ArrowDown','PageDown',' '].includes(e.key)) {
     e.preventDefault();
@@ -1025,7 +1057,7 @@ async function boot() {
       for (const a of acts.slice(1)) { a.gentle = true; await a.load(); }
     });
   });
-  (function loop(){ acts.forEach(a => a.step()); requestAnimationFrame(loop); })();
+  (function loop(now){ acts.forEach(a => a.step(now)); requestAnimationFrame(loop); })(performance.now());
 }
 boot();
 
