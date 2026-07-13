@@ -2,3 +2,4 @@ videos/
 *.png
 .gitignore
 node_modules/
+!images/touch-icon.png
